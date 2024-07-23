@@ -1,0 +1,777 @@
+---
+title: "Recherche de facteurs associés au portage de BGN"
+author: "Briand"
+date: "2024-07-17"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chargement et visualisation du dataframe :
+```{r dataframe, echo=TRUE}
+setwd("/cloud/project")
+myData <- read.csv2("./dataframes/dataframe_these_Briand.csv")
+kableExtra::kable(myData, format = "markdown")|>kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+## Préparation des données (Data cleanning)
+
+
+####Une petite correction avant de continuer:
+```{r echo=TRUE}
+myData[11, 6] <- "N"
+myData[16, 10] <- NA
+```
+
+### Codage des modalités "oui" et "non" de la variable BGN+ en 1 et 0 et stockage dans une nouvelle variable (BGN)
+
+```{r recodage de BGN+, echo=TRUE}
+myData$BGN <- ifelse(myData$BGN.=="oui",1,0)
+```
+
+### Recodage des modalités "O" et "N" de la variable "couvert" (couverture ou non puits) en 0 et 1 
+
+```{r recodage de couvert, echo=TRUE}
+myData$couvert <- ifelse(myData$couvert=="O",0,1)
+```
+
+### Recodage des modalités "P" et "F" de la variable "nature" (puits ou forages) en 0 et 1 
+
+```{r recodage de nature, echo=TRUE}
+myData$nature <- ifelse(myData$nature=="P",1,0)
+```
+
+### Recodage des modalités "P" et "C" de la variable "usage" (privee et communautaire) en 0 et 1 
+
+```{r recodage de usage, echo=TRUE}
+myData$usage <- ifelse(myData$usage=="P",0,1)
+```
+
+### Recodage des modalités "O" et "N" de la variable "cqDebut" (controle qualite avant debut d'utilisation) en 0 et 1 
+
+```{r recodage de cqDebut, echo=TRUE}
+myData$cqDebut <- ifelse(myData$cqDebut=="O",0,1)
+```
+
+### Recodage des modalités "O" et "N" de la variable "cqRegulier" (controle qualite en cours d'utilisation) en 0 et 1 
+
+```{r recodage de cqRegulier, echo=TRUE}
+myData$cqRegulier <- ifelse(myData$cqRegulier=="O",0,1)
+```
+
+### Recodage des modalités "O" et "N" de la variable "depotoirAl" (presence de depotoir aux alentours de la source) en 0 et 1 
+
+```{r recodage de depotoirAl, echo=TRUE}
+myData$depotoirAl <- ifelse(myData$depotoirAl=="O",1,0)
+```
+
+### Recodage des modalités "O" et "N" des variables "rtCouver" et "rsCouvert" (couverture des recipients de transport et de stockage) en 0 et 1 
+
+```{r recodage de rs et rt couverts, echo=TRUE}
+myData$rsCouv <- ifelse(myData$rsCouv=="O",0,1)
+myData$rtCouv <- ifelse(myData$rtCouv=="O",0,1)
+```
+
+### Recodage des modalités "O" et "N" de la variable "latrinesMenages" (presence de latrines dans le menage) en 1 et 0 
+
+```{r recodage de latrinesMenages, echo=TRUE}
+myData$latrinesMen <- ifelse(myData$latrinesMen=="O",1,0)
+```
+
+#### Il serait mieux que je change la date de creusement des sources en leurs ages
+```{r echo=TRUE}
+annee_courante <- as.numeric(format(Sys.Date(), "%Y"))
+myData$dateCreusem <- annee_courante - myData$dateCreusem
+```
+
+###Assurons-nous que R traite bien la variable "profondeur" comme quantitative
+```{r echo=TRUE}
+class(myData$profondeur)
+myData$profondeur <- as.numeric(as.character(myData$profondeur))
+class(myData$profondeur)
+```
+
+### Visualisons les changements :
+```{r echo=TRUE}
+kableExtra::kable(myData, format = "markdown")|>kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+
+## Analyses statstiques :
+
+
+## 1. La nature des sources d'eau (PUITS et FORAGE) a-t-elle un lien avec le portage en BGN ?
+**(Recherche d'association entre deux variables binaires)**
+
+### 1.a. Odds Ratio et son IC :
+```{r odds_nature, echo=TRUE}
+Epi::twoby2(myData$nature, myData$BGN)
+```
+
+### 1.b. Test de Chi2 :
+```{r echo=TRUE}
+tab_nature <- table(myData$nature, myData$BGN)
+tab_nature
+chisq.test(tab_nature)
+```
+
+
+   **Mon interpretation personnelle (simple):**
+La valeur de p > 0,005 à donc on ne peut pas rejeter l'hypothèse nulle, H0 selon laquelle il n'ya pas d'association entre la nature des sources d'eau et la presence de BGN.
+
+
+   **Interprétation proposee par Claude (quand je lui ai fournit les resultats):**
+
+**1. Association entre la nature des sources d'eau et le portage en BGN**
+
+   **1.a. Analyse de l'Odds Ratio**
+
+L'Odds Ratio **(OR)** calculé est de **2,0741 (IC 95% : 0,5311 - 8,0998)**. Cela suggère que les puits (P) ont environ 2 fois plus de chances d'être contaminés par des Bacilles Gram Négatifs (BGN) que les forages (F). Cependant, l'intervalle de confiance à 95% inclut la valeur 1, ce qui indique que cette différence n'est pas statistiquement significative au seuil conventionnel de 5%.
+
+   **Interprétation détaillée :**
+   
+**1. Direction de l'effet :** L'OR supérieur à 1 suggère une association positive entre les puits et la présence de BGN.
+**2. Ampleur de l'effet :** Un OR de 2,0741 indique un effet modéré, mais pas nécessairement fort.
+**3. Précision :** L'intervalle de confiance large (0,5311 - 8,0998) révèle une incertitude importante autour de cette estimation, probablement due à la taille limitée de l'échantillon.
+**4. Signification statistique :** L'inclusion de 1 dans l'IC 95% implique que nous ne pouvons pas rejeter l'hypothèse nulle d'absence d'association au niveau de signification habituel de 5%.
+
+   **1.b. Test du Chi-carré**
+
+Le test du Chi-carré avec correction de continuité de Yates donne les résultats suivants :
+- χ² = 0,50523
+- degrés de liberté (df) = 1
+- p-value = 0,4772
+
+   **Interprétation :**
+ **1.** La valeur p (0,4772) est nettement supérieure au seuil conventionnel de signification (α = 0,05).
+ **2.** Cela indique qu'il n'y a pas de preuve statistique suffisante pour rejeter l'hypothèse nulle d'indépendance entre la nature des sources d'eau (puits ou forage) et la présence de BGN.
+ **3.** La correction de Yates, appliquée ici, est appropriée pour les tableaux de contingence 2x2, en particulier avec des effectifs faibles, car elle tend à réduire le risque d'erreur de Type I (faux positifs).
+
+   **Synthèse et implications :**
+
+**1. Absence d'association significative :** Bien que l'Odds Ratio suggère une tendance vers une plus grande probabilité de contamination par BGN dans les puits par rapport aux forages, cette différence n'est pas statistiquement significative selon le test du Chi-carré (p > 0,05).
+
+**2. Taille de l'échantillon :** La largeur de l'intervalle de confiance de l'OR et la valeur p élevée du test du Chi-carré suggèrent que la taille de l'échantillon pourrait être insuffisante pour détecter une différence significative, si elle existe.
+
+**3. Implications pratiques :** Malgré l'absence de signification statistique, la tendance observée (OR > 1) ne devrait pas être entièrement ignorée. Elle pourrait indiquer un risque potentiellement plus élevé de contamination dans les puits, qui mériterait d'être exploré davantage.
+
+**4. Limites de l'étude :** Ces résultats soulignent l'importance d'interpréter avec prudence les données issues d'échantillons de taille limitée. La puissance statistique pourrait être insuffisante pour détecter des effets de faible ampleur.
+
+**5. Pistes pour futures recherches :** 
+   - Augmenter la taille de l'échantillon pour améliorer la précision des estimations.
+   - Explorer d'autres facteurs qui pourraient influencer la contamination par BGN, tels que la profondeur des sources, les pratiques d'entretien, ou les caractéristiques géologiques locales.
+   - Envisager des analyses multivariées pour contrôler les variables confondantes potentielles.
+
+**En conclusion**, bien que cette analyse ne démontre pas d'association statistiquement significative entre la nature des sources d'eau et la présence de BGN, elle fournit des indications précieuses pour orienter les futures recherches et les stratégies de gestion de l'eau dans la région étudiée. Une approche de précaution, visant à améliorer la qualité de l'eau tant dans les puits que dans les forages, reste recommandée.
+
+
+
+## 2. Y'a t-il une association entre l'utilisation faite de l'eau et le portage de BGN par celle-ci ?
+**(Recherche d'association entre deux variables binaires)**
+
+### 2.a. Odds Ratio et son IC :
+```{r utilisation, echo=TRUE}
+Epi::twoby2(myData$usage, myData$BGN)
+```
+### 2.b. Test de Chi2 :
+```{r echo=TRUE}
+tab_usage <- table(myData$usage, myData$BGN)
+tab_usage
+chisq.test(tab_usage)
+```
+   **Interpretation :**
+
+ **1. Odds Ratio (OR) et son intervalle de confiance (IC) :**
+
+L'Odds Ratio calculé est de 0.7778 avec un intervalle de confiance à 95% de [0.2133, 2.8364].
+
+Interprétation :
+- Un OR de 1 indique qu'il n'y a pas d'association entre les variables.
+- L'OR de 0.7778 suggère une légère diminution des odds de portage de BGN pour une certaine utilisation de l'eau par rapport à l'autre.
+- Cependant, l'intervalle de confiance inclut 1, ce qui signifie que cette association n'est pas statistiquement significative au niveau de confiance de 95%.
+
+ **2. Test du Chi-carré :**
+
+Le test du Chi-carré avec correction de continuité de Yates donne :
+X-squared = 0.0026989, df = 1, p-value = 0.9586
+
+Interprétation :
+- La valeur p (0.9586) est bien supérieure au seuil de signification habituel de 0.05.
+- Cela indique qu'il n'y a pas de preuve statistique d'une association significative entre l'utilisation de l'eau et le portage de BGN.
+
+ **Conclusion :**
+Sur la base de ces résultats, nous ne pouvons pas conclure à une association significative entre l'utilisation faite de l'eau et le portage de BGN. L'Odds Ratio proche de 1 et son intervalle de confiance incluant 1, ainsi que la valeur p élevée du test du Chi-carré, suggèrent que les deux variables sont probablement indépendantes.
+
+Il est important de noter que cette conclusion est basée uniquement sur les données fournies et les tests statistiques effectués. D'autres facteurs, comme la taille de l'échantillon ou d'éventuelles variables confondantes, pourraient influencer ces résultats. Une analyse plus approfondie ou un échantillon plus large pourrait éventuellement révéler des associations qui ne sont pas apparentes dans cette analyse.
+
+
+## 3. L'age des infrastructures conditionne-t-elle le portage en BGN ?
+
+(Recherche d'association entre *une variable quantitative* et *une variable qualitative*)
+Pour cela, nous devons faire une regression logistique binaire.
+
+#### 3.1. Réalisation de la reression logistique binaire :
+```{r age, echo=TRUE}
+regLog_age <- glm(myData$BGN~myData$dateCreusem, family = binomial(link = "logit"))
+summary(regLog_age)
+```
+
+#### 3.2. Cherchons l'odds ration pour l'age :
+```{r echo=TRUE}
+odds_ratios_age <- exp(coef(regLog_age))
+odds_ratios_age
+```
+#### 3.3. Cherchons l'intervalle de confiance pour l'odds-ratio :
+```{r echo=TRUE}
+conf_int_age <- exp(confint(regLog_age))
+conf_int_age
+```
+
+### Mon interprétation :
+
+Le coefficient pour la variable "dateCreusem", age des infrastructures est **positif** (0.1861) mais statistiquement non significatif (p-value = 0.567 > 0.05). Cela suggère qu'il n'ya pas d'association positive entre l'âge des infrastructures et la probabilité de portage de BGN.
+
+L'odds ratio pour "dateCreusem" est **1.018787**. Cela signifie que pour chaque année supplémentaire d'âge de l'infrastructure, les chances de portage de BGN augmentent d'environ 1.87%.
+
+L'intervalle de confiance pour l'odds ratio de "dateCreusem" **[0.9563520 1.088805]** comprend 1, ce qui confirme la non significance statistique de l'association.
+
+
+**Autre interprétation (proposée par une IA) :**
+
+*Association :* Le coefficient positif (0.01861) suggère une légère augmentation du risque de BGN+ avec l'augmentation de l'âge de l'infrastructure. Cependant, cette association n'est pas statistiquement significative (p-valeur = 0.567, qui est bien supérieure au seuil conventionnel de 0.05).
+
+*Odds Ratio :* L'odds ratio de 1.018787 indique que pour chaque année supplémentaire d'âge de l'infrastructure, les chances de BGN+ augmentent d'environ 1.9%. Cependant, comme mentionné, cette augmentation n'est pas statistiquement significative.
+
+*Intervalle de confiance :* L'intervalle de confiance pour l'odds ratio (0.9563520 à 1.088805) inclut 1, ce qui confirme le manque de significativité statistique. Cela signifie que nous ne pouvons pas exclure la possibilité qu'il n'y ait pas d'effet réel de l'âge sur le risque de BGN+.
+
+**Conclusion :**
+Basé sur ces résultats, nous ne pouvons pas conclure qu'il existe une association significative entre l'âge de l'infrastructure (dateCreusem) et la présence de BGN+. Bien qu'il y ait une légère tendance positive, elle n'est pas assez forte pour être considérée comme statistiquement significative.
+
+
+   **Interpretation de Claude)**
+   
+   **2. Association entre l'âge des infrastructures et le portage en BGN**
+La régression logistique binaire a été utilisée pour évaluer l'association entre l'âge des infrastructures (variable indépendante) et la présence de Bacilles Gram Négatifs (BGN) (variable dépendante binaire).
+
+ **Coefficients du modèle :**
+
+*Intercept :* 0,17695 (erreur standard : 0,62931)
+*Coefficient pour l'âge :* 0,01861 (erreur standard : 0,03253)
+
+ **Interprétation des coefficients :**
+
+Le coefficient pour l'âge (0,01861) est positif, suggérant une légère augmentation du log-odds de présence de BGN avec l'augmentation de l'âge des infrastructures.
+Cependant, la valeur p associée (0,567) est bien supérieure au seuil conventionnel de signification (0,05), indiquant que cette association n'est pas statistiquement significative.
+
+ **Odds Ratio (OR) :**
+
+*OR pour l'âge :* 1,018787 (exp(0,01861))
+
+*Intervalle de confiance à 95% pour l'OR :*
+
+2,5% : 0,9563520
+97,5% : 1,088805
+
+ **Interprétation de l'OR :**
+
+Un OR de 1,018787 suggère qu'une augmentation d'un an dans l'âge de l'infrastructure est associée à une augmentation de 1,87% des odds de présence de BGN.
+Cependant, l'intervalle de confiance (0,9563520 - 1,088805) inclut la valeur 1, ce qui confirme que cette association n'est pas statistiquement significative au niveau de 5%.
+
+ **Qualité du modèle :**
+
+*AIC* (Critère d'Information d'Akaike) : 48,903
+*Déviance nulle :* 45,234 sur 33 degrés de liberté
+*Déviance résiduelle :* 44,903 sur 32 degrés de liberté
+
+La faible différence entre la déviance nulle et la déviance résiduelle indique que le modèle n'apporte qu'une amélioration marginale par rapport à un modèle nul (sans prédicteurs).
+Synthèse et implications
+
+*Absence d'association significative :* Bien que le coefficient de régression et l'OR suggèrent une très légère tendance positive entre l'âge des infrastructures et la présence de BGN, cette association n'est pas statistiquement significative (p > 0,05).
+*Précision de l'estimation :* L'intervalle de confiance de l'OR est relativement étroit, ce qui suggère une estimation assez précise. Cependant, comme il inclut 1, nous ne pouvons pas conclure à un effet significatif de l'âge.
+*Taille de l'effet :* Même si l'association était significative, l'effet estimé serait très faible (augmentation de 1,87% des odds par année d'âge), ce qui pourrait avoir une importance pratique limitée.
+
+ **Limites du modèle :**
+
+Le modèle ne prend en compte que l'âge comme variable explicative, ignorant potentiellement d'autres facteurs importants.
+La suppression de 4 observations due à des données manquantes pourrait affecter les résultats, surtout avec un échantillon déjà limité.
+
+
+ **Implications pratiques :**
+
+Ces résultats suggèrent que l'âge des infrastructures, à lui seul, n'est pas un prédicteur fiable de la contamination par BGN dans cet échantillon.
+D'autres facteurs, tels que l'entretien, la profondeur, ou les conditions environnementales locales, pourraient jouer un rôle plus important.
+
+
+ **Pistes pour futures recherches :**
+
+Inclure d'autres variables potentiellement pertinentes dans le modèle pour une analyse multivariée.
+Examiner les interactions potentielles entre l'âge et d'autres caractéristiques des infrastructures.
+Augmenter la taille de l'échantillon pour améliorer la puissance statistique.
+Explorer des relations non linéaires potentielles entre l'âge et la présence de BGN.
+
+
+**En conclusion**, cette analyse ne fournit pas de preuves solides d'une association entre l'âge des infrastructures et la présence de BGN. Cependant, elle souligne l'importance d'une approche plus globale dans l'évaluation des facteurs de risque de contamination des sources d'eau. Ces résultats devraient encourager une exploration plus approfondie des multiples facteurs pouvant influencer la qualité microbiologique de l'eau, au-delà de la simple considération de l'âge des infrastructures.
+
+
+
+## 4. La profondeur des infrastructure a-t-elle un lien avec le portage en BGN ?
+
+(Là aussi, nous allons realiser une **regression logistique binaire**)
+
+### Faisons notre regression logistique avec calcul de l'OR et se son IC :
+```{r echo=TRUE}
+regLog_prof <- glm(myData$BGN~myData$profondeur, family = binomial(link = "logit"))
+summary(regLog_prof)
+odds_ratios_prof <- exp(coef(regLog_prof))
+odds_ratios_prof
+conf_int_prof <- exp(confint(regLog_prof))
+conf_int_prof
+```
+
+
+**Régression logistique :**
+
+Coefficient pour la profondeur : -0.02452
+Erreur standard : 0.01678
+Valeur z : -1.461
+P-valeur : 0.1440
+
+
+**Odds Ratio :**
+
+Pour la profondeur : 0.9757789
+
+
+**Intervalle de confiance pour l'Odds Ratio :**
+
+2.5% : 0.9390982
+97.5% : 1.005842
+
+
+**Interprétation :**
+
+*Association :* Le coefficient négatif (-0.02452) suggère une légère diminution du risque de BGN+ avec l'augmentation de la profondeur. Cependant, cette association n'est pas statistiquement significative (p-valeur = 0.1440, qui est supérieure au seuil conventionnel de 0.05).
+
+*Odds Ratio :* L'odds ratio de 0.9757789 indique que pour chaque unité d'augmentation de la profondeur, les chances de BGN+ diminuent d'environ 2.4% (1 - 0.9757789 = 0.0242211). Cependant, comme mentionné, cette diminution n'est pas statistiquement significative.
+
+*Intervalle de confiance :* L'intervalle de confiance pour l'odds ratio (0.9390982 à 1.005842) inclut 1, ce qui confirme le manque de significativité statistique. Cela signifie que nous ne pouvons pas exclure la possibilité qu'il n'y ait pas d'effet réel de la profondeur sur le risque de BGN+.
+
+**Conclusion** :
+Basé sur ces résultats, nous ne pouvons pas conclure qu'il existe une association significative entre la profondeur et la présence de BGN+. Bien qu'il y ait une légère tendance négative (moins de BGN+ dans les sources d'eau plus profondes), elle n'est pas assez forte pour être considérée comme statistiquement significative.
+**NB : Cependant, rappelons-nous que lorsque j'ai evalue l'impact de la nature des sources d'eau sur le portage en BGN (numero 1), on a trouvé un l'Odds Ratio qui suggère une tendance vers une plus grande probabilité de contamination par BGN dans les puits par rapport aux forages. Cela prouve que malgre la noon significence de nos tests (due sans doute a la taille faible de l'echantillon), la profondeur a un impact sur la potabilite de l'eau**
+
+
+
+   **Autre interpretation (proposée par Claude) :**
+   **3. Association entre la profondeur des infrastructures et le portage en BGN**
+   
+Une régression logistique binaire a été réalisée pour évaluer l'association entre la profondeur des infrastructures (variable indépendante) et la présence de Bacilles Gram Négatifs (BGN) (variable dépendante binaire).
+
+**Coefficients du modèle :**
+
+*Coefficient pour la profondeur :* -0,02452 (erreur standard : 0,01678)
+*Valeur z :* -1,461
+*P-valeur :* 0,1440
+
+**Interprétation des coefficients :**
+
+Le coefficient négatif (-0,02452) suggère une tendance à la diminution du log-odds de présence de BGN avec l'augmentation de la profondeur des infrastructures.
+Cependant, la valeur p associée (0,1440) est supérieure au seuil conventionnel de signification (0,05), indiquant que cette association n'est pas statistiquement significative au niveau de confiance habituel de 95%.
+
+**Odds Ratio (OR) :**
+
+*OR pour la profondeur :* 0,9757789
+
+*Intervalle de confiance à 95% pour l'OR :*
+
+2,5% : 0,9390982
+97,5% : 1,005842
+
+**Interprétation de l'OR :**
+
+Un OR de 0,9757789 suggère qu'une augmentation d'une unité de profondeur (1 en mètre) est associée à une diminution de 2,42% des odds de présence de BGN (1 - 0,9757789 = 0,0242211).
+Cependant, l'intervalle de confiance (0,9390982 - 1,005842) inclut la valeur 1, ce qui confirme que cette association n'est pas statistiquement significative au niveau de 5%.
+
+**Synthèse et implications**
+
+*Tendance observée :* Bien que non statistiquement significative, les résultats suggèrent une légère tendance à la diminution de la présence de BGN avec l'augmentation de la profondeur des infrastructures.
+*Signification statistique :* L'absence de signification statistique (p > 0,05) indique que nous ne pouvons pas rejeter avec confiance l'hypothèse nulle d'absence d'association entre la profondeur et la présence de BGN.
+*Précision de l'estimation :* L'intervalle de confiance relativement étroit autour de l'OR suggère une estimation assez précise, mais l'inclusion de 1 dans cet intervalle empêche de conclure à un effet significatif.
+*Taille de l'effet :* Même si l'association était significative, l'effet estimé serait relativement faible (diminution de 2,42% des odds par unité de profondeur), ce qui pourrait avoir une importance pratique limitée.
+
+**Implications pratiques :**
+
+Ces résultats suggèrent que la profondeur des infrastructures, à elle seule, n'est pas un prédicteur fiable de la contamination par BGN dans cet échantillon.
+Cependant, la tendance observée (bien que non significative) pourrait indiquer un potentiel effet protecteur des infrastructures plus profondes contre la contamination par BGN.
+
+
+**Limites de l'analyse :**
+
+Le modèle ne prend en compte que la profondeur comme variable explicative, ignorant potentiellement d'autres facteurs importants.
+La taille de l'échantillon pourrait être insuffisante pour détecter un effet significatif, surtout si cet effet est faible.
+Des relations non linéaires entre la profondeur et la présence de BGN ne sont pas prises en compte dans ce modèle linéaire.
+
+
+**Pistes pour futures recherches :**
+
+   Inclure d'autres variables pertinentes dans le modèle pour une analyse multivariée (par exemple, type de sol, proximité des sources de contamination, pratiques d'entretien).
+   Examiner les interactions potentielles entre la profondeur et d'autres caractéristiques des infrastructures.
+   Augmenter la taille de l'échantillon pour améliorer la puissance statistique.
+   Explorer des relations non linéaires potentielles entre la profondeur et la présence de BGN.
+   Considérer des analyses stratifiées par type d'infrastructure (puits vs forages) pour identifier d'éventuelles différences d'effet selon le type de source d'eau.
+
+
+**En conclusion**, bien que cette analyse ne fournisse pas de preuves solides d'une association significative entre la profondeur des infrastructures et la présence de BGN, elle suggère une tendance potentiellement intéressante qui mériterait d'être explorée plus en détail. Ces résultats soulignent l'importance d'une approche multifactorielle dans l'évaluation des risques de contamination des sources d'eau et encouragent des investigations plus approfondies sur les mécanismes potentiels par lesquels la profondeur pourrait influencer la qualité microbiologique de l'eau.
+
+
+
+## 5. Concernant les puits, leur couverture influence-t-elle leur contamination par des BGN ?
+(Il s'agit de deux variables binaires, donc OR)
+
+### 5.1 Calcul de l'OR et son IC :
+```{r OR_P_couverts, echo=TRUE}
+Epi::twoby2(myData$couvert[myData$nature=="1"], myData$BGN[myData$nature=="1"])
+```
+
+**Interprétation de ces résultats :**
+**Direction et ampleur de l'effet :**
+
+L'Odds Ratio (OR) de 1,0286 suggère une association très faible, presque nulle, entre la couverture des puits et la contamination par BGN.
+**Interprétation :** Les puits couverts ont environ 2,86% plus de chances d'être contaminés par des BGN que les puits non couverts, ce qui est négligeable en pratique.
+**Signification statistique :**
+L'intervalle de confiance à 95% [0,1986 - 5,3262] inclut largement la valeur 1, indiquant que l'association n'est pas statistiquement significative au niveau α = 0,05.
+Les p-valeurs (exacte : 1,0000 et asymptotique : 0,9732) sont très supérieures à 0,05, confirmant l'absence de signification statistique.
+
+**Précision de l'estimation :**
+L'intervalle de confiance est très large, s'étendant de valeurs nettement inférieures à 1 à des valeurs nettement supérieures à 1.
+Cette large amplitude reflète une incertitude importante autour de l'estimation ponctuelle, probablement due à la taille limitée de l'échantillon.
+
+**Risque relatif et différence de probabilité :**
+Risque relatif : 1,0182 [IC 95% : 0,3559 - 2,9131]
+Différence de probabilité : 0,0065 [IC 95% : -0,3253 - 0,3491]
+Ces mesures alternatives confirment l'absence d'association significative entre la couverture des puits et la contamination par BGN.
+Implications et discussion
+
+*Absence d'effet :*
+Contrairement à l'interprétation précédente, cette analyse ne montre aucune tendance, même légère, à un effet protecteur de la couverture des puits sur la contamination par BGN.
+
+*Considérations pratiques :*
+L'absence totale d'association suggère que la couverture des puits, telle qu'évaluée dans cette étude, n'a pas d'impact significatif sur la contamination par BGN.
+D'autres facteurs non étudiés ici pourraient être plus importants dans la détermination de la contamination bactérienne des puits.
+
+*Limites de l'étude :*
+Taille d'échantillon : Le nombre limité de puits dans l'étude réduit la puissance statistique, augmentant le risque d'erreur de type II.
+
+*Facteurs confondants :* D'autres variables non prises en compte pourraient masquer ou modifier la relation entre la couverture des puits et la contamination par BGN.
+
+**Pistes pour futures recherches :**
+Augmenter la taille de l'échantillon pour améliorer la précision des estimations et la puissance statistique.
+Inclure d'autres variables pertinentes dans une analyse multivariée.
+Examiner d'autres aspects de la construction et de l'entretien des puits qui pourraient influencer la contamination bactérienne.
+
+**Implications pour la gestion de l'eau :**
+Ces résultats suggèrent que la simple couverture des puits pourrait ne pas être suffisante pour prévenir la contamination par BGN.
+Il serait important d'explorer d'autres mesures de protection de la qualité de l'eau des puits, telles que l'amélioration des techniques de construction, l'entretien régulier, ou la gestion de l'environnement immédiat des puits.
+En conclusion, cette analyse ne fournit aucune preuve d'une influence de la couverture des puits sur la contamination par BGN. Ces résultats remettent en question l'efficacité de la simple couverture des puits comme mesure préventive contre la contamination bactérienne. Ils soulignent la nécessité de recherches plus approfondies pour identifier les facteurs les plus influents dans la contamination des puits et pour développer des stratégies de gestion de l'eau plus efficaces.
+
+### 5.2 Test du Chi2 :
+```{r Yates_P_couverts, echo=TRUE}
+tab_p.couverts <- table(myData$couvert[myData$nature=="1"], myData$BGN[myData$nature=="1"])
+tab_p.couverts
+chisq.test(tab_p.couverts)
+```
+
+**Interprétation globale**
+
+1. Association entre la couverture des puits et la contamination par BGN :
+
+- Odds Ratio (OR) : 1,0286 [IC 95% : 0,1986 - 5,3262]
+- Risque Relatif (RR) : 1,0182 [IC 95% : 0,3559 - 2,9131]
+- Différence de probabilité : 0,0065 [IC 95% : -0,3253 - 0,3491]
+
+Ces mesures indiquent une association quasiment nulle entre la couverture des puits et la contamination par BGN. L'OR et le RR sont très proches de 1, suggérant une absence d'effet de la couverture sur la contamination.
+
+2. Signification statistique :
+
+- P-valeur exacte (test exact de Fisher) : 1,0000
+- P-valeur asymptotique : 0,9732
+- Test du Chi-carré (avec correction de Yates) : X-squared = 4.6778e-31, df = 1, p-value = 1
+
+Toutes ces valeurs p sont extrêmement élevées, bien au-dessus du seuil conventionnel de 0,05. Cela confirme l'absence totale de signification statistique dans l'association observée.
+
+3. Précision et fiabilité :
+
+- Les intervalles de confiance sont très larges pour toutes les mesures d'association, indiquant une grande incertitude dans les estimations.
+- L'avertissement "Chi-squared approximation may be incorrect" suggère que la taille de l'échantillon pourrait être trop petite pour une application fiable du test du Chi-carré.
+
+**Implications et discussion**
+
+1. Absence d'effet de la couverture des puits :
+   Cette analyse fournit des preuves solides qu'il n'y a aucune association entre la couverture des puits et la contamination par BGN dans cet échantillon. La couverture des puits ne semble pas influencer le risque de contamination.
+
+2. Limites méthodologiques :
+   - La taille de l'échantillon semble être très petite (25 observations au total), ce qui limite considérablement la puissance statistique de l'étude.
+   - L'approximation du Chi-carré pourrait ne pas être fiable, renforçant l'importance du test exact de Fisher dans ce contexte.
+
+3. Implications pour la gestion de l'eau :
+   - Ces résultats remettent en question l'efficacité de la simple couverture des puits comme mesure préventive contre la contamination par BGN.
+   - D'autres facteurs, non étudiés ici, pourraient jouer un rôle plus important dans la détermination de la contamination bactérienne des puits.
+
+4. Pistes pour futures recherches :
+   - Augmenter significativement la taille de l'échantillon pour améliorer la précision des estimations et la fiabilité des tests statistiques.
+   - Examiner d'autres facteurs potentiellement plus influents sur la contamination des puits (profondeur, type de sol, pratiques d'entretien, sources de contamination environnementales, etc.).
+   - Réaliser une étude multivariée pour prendre en compte simultanément plusieurs facteurs potentiels de contamination.
+
+**Conclusion**
+
+Cette analyse approfondie ne fournit aucune preuve d'une influence de la couverture des puits sur la contamination par BGN. L'association est statistiquement non significative et pratiquement nulle. Ces résultats suggèrent que d'autres facteurs, non étudiés ici, pourraient être plus déterminants dans la contamination des puits par des BGN. Cependant, la petite taille de l'échantillon limite la généralisation de ces conclusions. Des études plus vastes et plus complètes sont nécessaires pour mieux comprendre les facteurs influençant la contamination bactérienne des puits et pour développer des stratégies de gestion de l'eau plus efficaces.
+
+
+
+## 6. Le controle qualite en debut d'utilisation a t-il influencé la contamination ?
+
+### 6.1. Odds ratio :
+```{r echo=TRUE}
+Epi::twoby2(myData$cqDebut, myData$BGN)
+```
+
+
+**Distribution des données :**
+
+*Pas de contrôle qualité initial (N) :* 16 avec BGN, 10 sans BGN
+*Avec contrôle qualité initial (O) :* 2 avec BGN, 4 sans BGN
+
+**Mon interpretation :**
+Les données suggèrent une tendance où les infrastructures sans contrôle qualité initial semblent avoir un risque plus élevé de présence de BGN. Bien que la différence ne soit pas statistiquement significative, l'ampleur de l'effet (risque relatif de 1.73 et odds ratio de 3.2) suggère qu'il pourrait y avoir une association cliniquement importante.
+
+** *REMARQUE :* **
+**La taille de l'échantillon est petite, en particulier pour le groupe avec contrôle qualité initial (seulement 6 observations). Cela limite considérablement la puissance statistique. Une augmentation de la taille de l'échantillon pourrait clarifier cette association potentielle.**
+
+
+### 6.2. Test du Chi2 :
+```{r P cqd, echo=TRUE}
+tab_cqdebut <- table(myData$cqDebut, myData$BGN)
+tab_cqdebut
+chisq.test(tab_cqdebut)
+```
+**Interprétation globale**
+
+**Association entre le contrôle qualité en début d'utilisation et la contamination par BGN :**
+
+
+Odds Ratio (OR) : 3,2000 [IC 95% : 0,4921 - 20,8094]
+Risque Relatif (RR) : 1,7333 [IC 95% : 0,8220 - 3,6548]
+Différence de probabilité : 0,2821 [IC 95% : -0,1309 - 0,5678]
+
+Ces mesures suggèrent une possible association positive entre l'absence de contrôle qualité en début d'utilisation et la contamination par BGN. L'OR indique que les sources d'eau sans contrôle qualité initial ont 3,2 fois plus de chances d'être contaminées par des BGN que celles avec un contrôle qualité.
+
+**Signification statistique :**
+
+
+P-valeur exacte (test exact de Fisher) : 0,3649
+P-valeur asymptotique : 0,2234
+Test du Chi-carré (avec correction de Yates) : X-squared = 0,63818, df = 1, p-value = 0,4244
+
+Toutes ces valeurs p sont supérieures au seuil conventionnel de 0,05, indiquant que l'association observée n'est pas statistiquement significative.
+
+**Précision et fiabilité :**
+
+
+Les intervalles de confiance sont très larges pour toutes les mesures d'association, indiquant une grande incertitude dans les estimations.
+L'avertissement "Chi-squared approximation may be incorrect" suggère que la taille de l'échantillon pourrait être trop petite pour une application fiable du test du Chi-carré.
+
+**Implications et discussion**
+
+Tendance observée :
+Bien que non statistiquement significative, il y a une tendance suggérant que l'absence de contrôle qualité en début d'utilisation pourrait être associée à un risque accru de contamination par BGN.
+Limites méthodologiques :
+
+La taille de l'échantillon semble être relativement petite (32 observations au total), ce qui limite la puissance statistique de l'étude.
+L'approximation du Chi-carré pourrait ne pas être fiable, ce qui souligne l'importance du test exact de Fisher dans ce contexte.
+
+
+**Implications pour la gestion de l'eau :**
+
+Malgré l'absence de signification statistique, la tendance observée suggère que le contrôle qualité initial pourrait jouer un rôle dans la prévention de la contamination par BGN.
+Cette observation pourrait justifier une attention particulière à la mise en place de contrôles qualité au début de l'utilisation des sources d'eau.
+
+
+**Pistes pour futures recherches :**
+
+Augmenter la taille de l'échantillon pour améliorer la précision des estimations et la fiabilité des tests statistiques.
+Examiner la nature et l'efficacité des contrôles qualité initiaux pour mieux comprendre leur impact potentiel.
+Réaliser une étude longitudinale pour évaluer l'évolution de la contamination au fil du temps en fonction du contrôle qualité initial.
+
+
+
+**Conclusion**
+Bien que cette analyse suggère une possible association entre l'absence de contrôle qualité initial et un risque accru de contamination par BGN, les résultats ne sont pas statistiquement significatifs. La tendance observée (OR = 3,2) pourrait avoir une importance pratique dans la gestion des ressources en eau, mais la grande incertitude autour de cette estimation (large intervalle de confiance) limite la solidité de cette conclusion.
+Ces résultats soulignent l'importance potentielle du contrôle qualité initial, mais aussi la nécessité de recherches plus approfondies avec des échantillons plus larges. Il serait prudent de considérer le contrôle qualité initial comme une mesure préventive potentiellement utile, tout en reconnaissant que son efficacité n'est pas statistiquement démontrée dans cette étude.
+Des études complémentaires, idéalement avec un échantillon plus large et une méthodologie plus robuste, seraient nécessaires pour confirmer ou infirmer cette tendance observée et pour mieux comprendre les facteurs influençant la contamination bactérienne des sources d'eau.
+
+
+
+## 7. Le controle qualite regulier des infrastructures influencé t-il leur contamination  ?
+### 7.1. Odds atio :
+```{r echo=TRUE}
+Epi::twoby2(myData$cqRegulier, myData$BGN)
+```
+
+### 7.2. Test du Chi2 :
+```{r P cqr, echo=TRUE}
+tab_cqregulier <- table(myData$cqRegulier, myData$BGN)
+tab_cqregulier
+chisq.test(tab_cqregulier)
+```
+
+**Distribution des données :**
+
+*Pas de contrôle qualité régulier (N) :* 13 avec BGN, 10 sans BGN
+*Avec contrôle qualité régulier (O) :* 9 avec BGN, 4 sans BGN
+
+
+**Odds Ratio :** 0.5778 (IC 95% : 0.1372 - 2.4329)
+
+Les chances d'etre contaminée par des BGN sont environ 42% plus faibles pour les infrastructures sans contrôle qualité régulier, mais cette différence n'est pas statistiquement significative.
+
+
+*Différence de probabilité :* -0.1271 (IC 95% : -0.3946 - 0.1954)
+
+La probabilité d'avoir des BGN est 12.71% plus faible pour les infrastructures sans contrôle qualité régulier, mais l'intervalle de confiance inclut 0, indiquant que cette différence n'est pas statistiquement significative.
+
+
+*Valeurs p :*
+
+P-value exacte : 0.5013
+Cette valeur de p élevée (> 0.05) indique qu'il n'y a pas de différence statistiquement significative entre les groupes.
+
+
+**Conclusion :**
+Contrairement à ce qu'on pourrait attendre, les données suggèrent une légère tendance où les infrastructures avec un contrôle qualité régulier semblent avoir un risque légèrement plus élevé de présence de BGN. Cependant, cette différence n'est pas statistiquement significative. Les intervalles de confiance larges et les valeurs p élevées indiquent que nous ne pouvons pas conclure à une réelle influence du contrôle qualité régulier sur le portage en BGN basé sur sur ces données.
+
+** *REmarque* : ** 
+**La taille de l'échantillon semble relativement petite, ce qui limite la puissance statistique.**
+
+
+## 8. La presence de latrines aux alentours des sources d'eau aurait-elle influencée le portage de BGN ?
+
+### 8.1. Odds ratio :
+```{r}
+av <- table(myData$latrinesMen, myData$BGN, useNA = "ifany")
+av
+```
+Les infrastructures portant la valeur NA pour cette variable sont en fait des sources d'eau a usage communautaires qui ne sont pas construites a proximite d'un quelconque menage, et donc loin des latrines menageres aussi. J'ai decider de les exclure en leur attribuant la valeur NA (non applicable) pour eviter de surestimer la proportion des infrastructures sans latrines menageres
+
+```{r}
+Epi::twoby2(myData$latrinesMen, myData$BGN)
+```
+
+### 8.2. Test de Chi2 :
+```{r}
+tab_latrines <- table(myData$latrinesMen, myData$BGN)
+chisq.test(tab_latrines)
+```
+
+ **a. Odds Ratio (OR) et son intervalle de confiance (IC) :**
+
+L'Odds Ratio calculé est de 1.7500 avec un intervalle de confiance à 95% de [0.2746, 11.1519].
+
+**Interprétation :**
+- Un OR supérieur à 1 suggère une association positive entre l'absence de latrines et le portage de BGN.
+- Cependant, l'intervalle de confiance est très large et inclut 1, ce qui indique que cette association n'est pas statistiquement significative au niveau de confiance de 95%.
+
+ **b. Risque Relatif (RR) :**
+
+Le Risque Relatif est de 1.3750 avec un intervalle de confiance à 95% de [0.4837, 3.9084].
+
+**Interprétation :**
+- Un RR supérieur à 1 suggère que l'absence de latrines est associée à un risque légèrement plus élevé de portage de BGN.
+- Comme pour l'OR, l'intervalle de confiance incluant 1 indique que cette association n'est pas statistiquement significative.
+
+ **c. Test du Chi-carré :**
+
+Le test du Chi-carré avec correction de continuité de Yates donne :
+X-squared = 0.015334, df = 1, p-value = 0.9014
+
+**Interprétation :**
+- La valeur p (0.9014) est largement supérieure au seuil de signification habituel de 0.05.
+- Cela indique qu'il n'y a pas de preuve statistique d'une association significative entre la présence de latrines et le portage de BGN.
+
+ **d. Avertissement :**
+
+L'avertissement "Chi-squared approximation may be incorrect" est présent, suggérant que les conditions pour l'application fiable du test du Chi-carré peuvent ne pas être remplies, probablement en raison de la taille de l'échantillon.
+
+**Conclusion :**
+Sur la base de ces résultats, nous ne pouvons pas conclure à une influence significative de la présence de latrines aux alentours des sources d'eau sur le portage de BGN. Bien que l'Odds Ratio et le Risque Relatif suggèrent une légère association positive entre l'absence de latrines et le portage de BGN, les intervalles de confiance larges incluant 1 et la valeur p très élevée du test du Chi-carré indiquent que cette association n'est pas statistiquement significative.
+
+**Limitations et considérations :**
+1. La taille de l'échantillon semble être très petite (seulement 19 observations au total), ce qui limite considérablement la puissance statistique de l'analyse.
+2. L'avertissement concernant l'approximation du Chi-carré suggère que ces résultats doivent être interprétés avec une grande prudence.
+3. Les intervalles de confiance très larges indiquent une grande incertitude dans l'estimation de l'effet.
+
+**Recommandations :**
+1. Augmenter significativement la taille de l'échantillon pour améliorer la précision des estimations et la puissance statistique.
+2. Utiliser des tests statistiques plus appropriés pour les petits échantillons, comme le test exact de Fisher.
+3. Examiner d'autres variables potentiellement confondantes qui pourraient influencer cette relation.
+4. Réaliser une étude plus approfondie, potentiellement avec une méthodologie différente, pour mieux comprendre la relation entre la présence de latrines et le portage de BGN.
+5. Considérer d'autres facteurs environnementaux et sanitaires qui pourraient être plus fortement associés au portage de BGN.
+
+**En résumé,** bien que les résultats suggèrent une légère tendance, l'étude actuelle ne fournit pas de preuves suffisantes pour conclure à une influence significative de la présence de latrines sur le portage de BGN. Une recherche plus approfondie avec un échantillon plus large serait nécessaire pour tirer des conclusions plus solides.
+
+
+## 9. La presence de depotoirs aux alentours des sources d'eau aurait-elle influencée le portage de BGN ?
+
+###  Odds ratio et Chi2:
+```{r}
+Epi::twoby2(myData$depotoirAl, myData$BGN)
+tab_depotoir <- table(myData$depotoirAl, myData$BGN)
+chisq.test(tab_depotoir)
+```
+
+
+ **a. Odds Ratio (OR) et son intervalle de confiance (IC) :**
+
+L'Odds Ratio calculé est de 4.1176 avec un intervalle de confiance à 95% de [0.4294, 39.4817].
+
+**Interprétation :**
+- Un OR supérieur à 1 suggère une association positive entre l'absence de dépotoirs et le portage de BGN.
+- Cependant, l'intervalle de confiance est très large et inclut 1, ce qui indique que cette association n'est pas statistiquement significative au niveau de confiance de 95%.
+
+ **b. Risque Relatif (RR) :**
+Le Risque Relatif est de 2.7097 avec un intervalle de confiance à 95% de [0.4343, 16.9047].
+
+ **Interprétation :**
+- Un RR supérieur à 1 suggère que l'absence de dépotoirs est associée à un risque plus élevé de portage de BGN.
+- Comme pour l'OR, l'intervalle de confiance large incluant 1 indique que cette association n'est pas statistiquement significative.
+
+ **c. Test du Chi-carré :**
+
+Le test du Chi-carré avec correction de continuité de Yates donne :
+X-squared = 0.71749, df = 1, p-value = 0.397
+
+ **Interprétation :**
+- La valeur p (0.397) est supérieure au seuil de signification habituel de 0.05.
+- Cela indique qu'il n'y a pas de preuve statistique d'une association significative entre la présence de dépotoirs et le portage de BGN.
+
+ **d. Avertissement :**
+
+L'avertissement "Chi-squared approximation may be incorrect" est toujours présent, suggérant que les conditions pour l'application fiable du test du Chi-carré pourraient ne pas être remplies. (Je pense que c'est du au fait qu'une modalité du tableau de contigence a une valeur inferieur à 5)
+
+ **Conclusion :**
+Malgré le changement dans les résultats, notre conclusion globale reste similaire. Nous ne pouvons pas affirmer avec certitude que la présence de dépotoirs aux alentours des sources d'eau influence significativement le portage de BGN. Bien que l'Odds Ratio et le Risque Relatif suggèrent une possible association positive entre l'absence de dépotoirs et le portage de BGN, les intervalles de confiance larges incluant 1 et la valeur p élevée du test du Chi-carré indiquent que cette association n'est pas statistiquement significative.
+
+ **Limitations et considérations :**
+1. La taille de l'échantillon semble être petite, limitant la puissance statistique de l'analyse.
+2. L'avertissement concernant l'approximation du Chi-carré suggère que ces résultats doivent être interprétés avec prudence.
+3. Les intervalles de confiance très larges indiquent une grande incertitude dans l'estimation de l'effet.
+
+ **Recommandations :**
+- Augmenter la taille de l'échantillon pour améliorer la précision des estimations.
+- Envisager d'utiliser des tests statistiques plus appropriés pour les petits échantillons, comme le test exact de Fisher.
+- Examiner d'autres variables potentiellement confondantes qui pourraient influencer cette relation.
+- Réaliser une étude plus approfondie pour mieux comprendre la relation potentielle entre les dépotoirs et le portage de BGN.
